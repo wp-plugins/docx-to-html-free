@@ -3,15 +3,20 @@ Contributors: starsites
 Donate link: http://starsites.co.za/
 Tags: doc, parse, html, generate, image, upload
 Requires at least: 3.0
-Tested up to: 3.0.1
+Tested up to: 3.0.2
 
-This plugin will process an uploaded .docx file, extracting all the content as a post.
+This plugin will process an uploaded .docx file, extracting all the contents as a post.
 
 == Description ==
 
+Everybody uses Word documents or related Word Processing files. Now you can quickly post your .docx files as posts!
+
 In the Administration you will have a new menu item where you will be able to set a few per use settings like the
 post title etc. as well as a field to upload a .docx file (Microsoft Word 2007 file). The Uploaded files as well
-as all temporary files will be removed when the script completes.
+as all temporary files will be removed when the script completes, saving you disk space.
+
+Get the Premium version of DOCX to HTML from [WP Plugins](http://wpplugins.com/plugin/305/docx-to-html-premium "Premium WordPress Plugins"). Premium version can do automatic formatting based on the Word file provided.
+Created and maintained by [Starsites/Jacotheron](http://www.starsites.co.za). We will answer queries and provide support from our website [Starsites.co.za](http://www.starsites.co.za).
 
 Please note:
 *     The normal .doc will not work. Please do not upload any other type of file, the script will not be

@@ -376,32 +376,13 @@ class DOCXtoHTML {
             //if it is an complete tag see if it should be parsed
             switch ($data['tag']) {
                 case "W:T":
-                    $return = $data['value'].$this->tagcloset;//return the text (add spaces after)
+                    $return = $data['value'];//return the text (add spaces after)
                     $this->tagcloset = "";
                     break;
                 case "A:BLIP"://the image data
                     $rid = $data['attributes']['R:EMBED'];
                     $imagepath = $this->rels[$rid][1];
                     $return = "src='".$this->imagePathPrefix.$imagepath."' alt='' />";
-                    break;
-                case "W:PSTYLE"://word styles used for headings etc.
-                    if($data['attributes']['W:VAL'] == "Heading1"){
-                        $return = "<h1>";
-                        $this->tagclosep = "</h1>";
-                    }elseif($data['attributes']['W:VAL'] == "Heading2"){
-                        $return = "<h2>";
-                        $this->tagclosep = "</h2>";
-                    }elseif($data['attributes']['W:VAL'] == "Heading3"){
-                        $return = "<h3>";
-                        $this->tagclosep = "</h3>";
-                    }
-                    break;
-                case "W:B"://word style for bold
-                    if($this->tagcloset == "</strong>"){
-                        break;
-                    }
-                    $return = "<strong>";//return the text (add spaces after)
-                    $this->tagcloset = "</strong>";
                     break;
                 default:
                     break;
@@ -410,8 +391,7 @@ class DOCXtoHTML {
             //if it is an close tag see if it should be parsed
             switch ($data['tag']) {
                 case "W:P"://the paragraph ends
-                    $return = $this->tagclosep.($this->paragraphs ? "</p>":"\n");
-                    $this->tagclosep = "";
+                    $return = ($this->paragraphs ? "</p>":"\n");
                     break;
                 default:
                     break;
@@ -487,11 +467,7 @@ class DOCXtoHTML {
                     $dim = Array ('w' => imageSx($tmp0), 'h' => imageSy($tmp0));
                 }
             } else {
-                //if (imageSy($tmp0) > imageSx($tmp0)){
-                    //$dim = Array ('w' => round(imageSx($tmp0)*$thumb/imageSy($tmp0)), 'h' => $thumb);
-                //} else {
                     $dim = Array ('w' => imageSx($tmp0), 'h' => imageSy($tmp0));
-                //}
             }
             $tmp1 = imageCreateTrueColor ( $dim [ 'w' ], $dim [ 'h' ] );
             if ( imagecopyresized  ( $tmp1 , $tmp0, 0, 0, 0, 0, $dim [ 'w' ], $dim [ 'h' ], imageSx ( $tmp0 ), imageSy ( $tmp0 ) ) ) {
