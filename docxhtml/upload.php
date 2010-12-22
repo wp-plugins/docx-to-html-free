@@ -14,7 +14,6 @@ unset($current_user);
 
 //include the admin section for some other functions
 require_once(ABSPATH.'wp-admin/admin.php');
-
 //make sure that the current user may publish posts (if not, terminate script)
 if(!current_user_can('publish_posts')){
     $result = "1. You are not authorised to upload files.";
@@ -61,7 +60,7 @@ if(!isset($_FILES['docxhtml_file'])){
     exit(0);
 }elseif(isset($_FILES['docxhtml_file']["error"]) && $_FILES['docxhtml_file']["error"] != 0){
     $returndata = $uploadErrors[$_FILES['docxhtml_file']["error"]];
-    $result = "4. ".$returndatadata;
+    $result = "4. ".$returndata;
     update_option('docxhtml_last_result',$result);
     header("Location:".dirname($_SERVER['HTTP_REFERER'])."/admin.php?page=docxhtml_result",true,302);
     exit(0);
@@ -111,7 +110,7 @@ if(!$is_valid_extension){
 }
 
 //
-//THIS IS WHERE THE PARSE FUNCTION WILL BE CALLED FROM
+//THIS IS WHERE THE PARSE CLASS WILL BE CALLED FROM
 //
 
 //initiate the class, define some variables and start the proccess
@@ -119,21 +118,23 @@ require("class.DOCX-HTML.php");
 $extract = new DOCXtoHTML();
 $extract->docxPath = $_FILES['docxhtml_file']['tmp_name'];
 $extract->content_folder = strtolower(str_replace(".".$path_info['extension'],"",str_replace(" ","-",$path_info['basename'])));
-$extract->imagePathPrefix = plugins_url()."/docxhtml-free/";
+$extract->imagePathPrefix = plugins_url()."/docxhtml/";
 $extract->Init();
 
 //handle the output of the class and define variables needed for the WP post
 $post_data = $extract->output;
 $post_title = $_POST['docxhtml_post_title'];
-$post_publish = get_option('docxhtml_publish');
+$post_id = $_POST['docxhtml_post_id'];
+$post_status = $_POST['docxhtml_post_status'];
+$post_type = $_POST['docxhtml_post_type'];
 $post_cat1 = $_POST['docxhtml_post_cat1'];
-//now add the post to WP.
 // Create post object
 $my_post = array(
+    'ID' => $post_id,
     'post_title' => $post_title,
-    'post_name' => $post_name,
     'post_content' => $post_data,
-    'post_status' => $post_publish,
+    'post_status' => $post_status,
+    'post_type' => $post_type,
     'post_category' => array($post_cat1)
 );
 
@@ -157,7 +158,6 @@ if($extract->error != NULL) {
     header("Location:".dirname($_SERVER['HTTP_REFERER'])."/admin.php?page=docxhtml_result",true,302);
     exit(0);
 }
-
 //
 //END THE CALL TO PARSE
 //

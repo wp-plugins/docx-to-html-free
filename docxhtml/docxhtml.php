@@ -1,12 +1,29 @@
 <?php
 /*
-Plugin Name: DOCX to HTML Free
+Plugin Name: DOCX to HTML FREE
 Plugin URI: http://starsites.co.za/
 Description: This plugin will upload a docx file to extract all the contents (text/images) and then post the contents.
-Version: 1.1
+Version: 1.2
 Author: Jaco Theron
 Author URI: http://starsites.co.za/
 */
+/*
+DOCX to HTML Premium WordPress Plugin
+Copyright (C) 2010  Jacotheron(Starsites) - info@starsites.co.za
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 // create custom plugin settings menu
 add_action('admin_menu','docxhtml_create_menu');
 register_deactivation_hook(__FILE__,'docxhtml_deactivate');
@@ -15,7 +32,6 @@ function docxhtml_create_menu() {
     //create new top-level menu
     add_menu_page('DOCX to HTML','DOCX to HTML','publish_posts','docxhtml','docxhtml_upload_page',plugins_url('/images/icon.png',__FILE__));
     add_submenu_page('docxhtml','DOCX to HTML Results','Last Result','publish_posts','docxhtml_result','docxhtml_results_page');
-    add_submenu_page('docxhtml','DOCX to HTML Files','Files','manage_options','docxhtml_files','docxhtml_files_page');
     add_submenu_page('docxhtml','DOCX to HTML Settings','Settings','manage_options','docxhtml_settings','docxhtml_settings_page');
     add_submenu_page('docxhtml','DOCX to HTML Help','Help','publish_posts','docxhtml_help','docxhtml_help_page');
     //call register settings function
@@ -32,18 +48,107 @@ function docxhtml_deactivate() {
     unregister_setting('docxhtml-results-group','docxhtml_last_result','docxhtml_unregister_void');
 }
 function docxhtml_activate() {
-    //register our settings
-    //unregister_setting('docxhtml-settings-group','docxhtml_publish','docxhtml_unregister_void');
-    //unregister_setting('docxhtml-results-group','docxhtml_last_result','docxhtml_unregister_void');
 }
 function docxhtml_unregister_void(){
     return "";
 }
+function docxhtml_upload_page() {
+    ?>
+    <div class="wrap">
+        <h2>DOCX to HTML Upload</h2>
+        <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
+    <form method="post" action="<?php echo plugins_url()."/docxhtml/upload.php"; ?>" enctype='multipart/form-data'>
+        <?php settings_fields( 'docxhtml-upload-group' ); ?>
+        <table class="form-table">
+            <tr valign="top">
+                <th scope="row" style="">New Post Title <span style="color:red;">*</span></th>
+                <td style=""><input id="post_title" type="text" size="30" name="docxhtml_post_title" value=""
+                    style="font-size:1.7em; line-height: 100%; outline: medium none; padding: 3px 4px; width:300px;" /></td>
+                <td style=""><span class="description">The name of the new Post/Page if the proccess was succesful.<br />Required.</span></td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">Publish State <span style="color:red;">*</span></th>
+                <?php $post_publish = get_option('docxhtml_publish'); ?>
+                <td><select name="docxhtml_post_status" style="width:100px;" >
+                    <option value="draft" <?php echo ($post_publish == "draft") ? 'selected="selected"':"" ?>>Draft</option>
+                    <option value="publish" <?php echo ($post_publish == "publish") ? 'selected="selected"':"" ?>>Publish</option>
+                </select></td>
+                <td><span class="description">Post/Page's published state. This is the state of the Post/Page after the content is processed.</span></td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">Page or Post <span style="color:red;">*</span></th>
+                <td><select name="docxhtml_post_type" style="width:100px;" >
+                    <option value="post">Post</option>
+                    <option value="page">Page</option>
+                </select></td>
+                <td><span class="description">Is the current document a Page or a Post.<br />Default to Post.</span></td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">Post/Page ID</th>
+                <td><input type="text" size="30" name="docxhtml_post_id" value="0" style="padding: 3px 4px; width:300px;" /></td>
+                <td><span class="description">The ID of a Post/Page to override. Usefull if you want to extract a specific Word File again to replace the contents of the previous Post/Page.<br />
+                        0 will create a new post.</span></td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">New Post Categories <span style="color:red;">*</span></th>
+                <td><?php wp_dropdown_categories(array('hide_empty'=>0,'name'=>'docxhtml_post_cat1','selected'=>$category->parent,'hierarchical'=>true)); ?></td>
+                <td><span class="description">Select the Category that should contain your Post.<br />
+                        Required. Default to First Category of your Blog</span></td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">Docx File <span style="color:red;">*</span></th>
+                <td><input type="file" name="docxhtml_file" size="30" value="" style="line-height: 100%; outline: medium none; padding: 3px 4px; width:300px;" /></td>
+                <td><span class="description">Select the .docx file on your computer that should be processed.<br /><strong>Your Maximum File Size (according to the server) is: <?php
+                    $UPLOAD_MAX_SIZE = ini_get('upload_max_filesize');
+                    $unit = strtoupper(substr($UPLOAD_MAX_SIZE,-1));
+                    if(!is_int($unit)){
+                        echo $UPLOAD_MAX_SIZE;
+                    } else {
+                        $gigabytes = $UPLOAD_MAX_SIZE/1073741824;
+                        $megabytes = $UPLOAD_MAX_SIZE/1048576;
+                        $kilobytes = $UPLOAD_MAX_SIZE/1024;
+                        $bytes = $UPLOAD_MAX_SIZE;
+                        if($gigabytes > 1){
+                            echo $gigabytes."G";
+                        } elseif($megabytes > 1){
+                            echo $megabytes."M";
+                        } elseif($kilobytes > 1){
+                            echo $kilobytes."K";
+                        } else {
+                            echo $bytes;
+                        }
+                    }
+                ?></strong></span></td>
+            </tr>
+        </table>
+        <p class="submit"><input type="submit" class="button-primary" value="<?php _e('Create Post Now!') ?>" /></p>
+    </form>
+    </div>
+    <?php
+}
+function docxhtml_results_page() {
+    $data = get_option('docxhtml_last_result');
+    ?>
+    <div class="wrap">
+        <h2>DOCX to HTML Results</h2>
+        <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
+        <form method="post" action="">
+        <table class="widefat fixed">
+            <tr valign="top">
+                <th scope="row" style="width:150px;">Last Upload Result:</th>
+                <td><?php echo $data; ?></td>
+            </tr>
+        </table>
+        </form>
+    </div>
+    <?php
+}
 function docxhtml_settings_page() {
     ?>
     <div class="wrap">
+        <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
         <h2>DOCX to HTML Settings</h2>
-        <div id="free" class="updated"><p><strong>You are currently using the Free version of DOCX to HTML. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium version</a> Now!</strong><br/>By <a href="http://www.starsites.co.za">Starsites</a></p></div>
+        
         <?php if(isset($_GET['updated'])=="true"){ ?>
             <div id="message" class="updated"><p><strong>DOCX to HTML: Your settings have been saved successfully.</strong></p></div>
         <?php }elseif(isset($_GET['updated']) && $_GET['updated'] != "true"){ ?>
@@ -53,13 +158,14 @@ function docxhtml_settings_page() {
             <?php settings_fields('docxhtml-settings-group'); ?>
             <table class="form-table">
                 <tr valign="top">
-                    <th scope="row">New Post Publish State</th>
+                    <th scope="row"><label for="docxhtml_publish">New Post Publish State</label></th>
                     <?php $post_publish = get_option('docxhtml_publish'); ?>
-                    <td><select name="docxhtml_publish" style="width:100px;" >
+                    <td><select id="docxhtml_publish" name="docxhtml_publish" style="width:100px;" >
                         <option value="draft" <?php echo ($post_publish == "draft") ? 'selected="selected"':"" ?>>Draft</option>
                         <option value="publish" <?php echo ($post_publish == "publish") ? 'selected="selected"':"" ?>>Publish</option>
                     </select></td>
-                    <td>Post's published state. This is the state of the post after the content is proccessed.</td>
+                    <td><span class="description">Post's published state. This is the state of the post after the content is proccessed.<br />
+                        This Setting is overwritable form the Upload form.</span></td>
                 </tr>
             </table>
             <p class="submit"><input type="submit" class="button-primary" value="<?php _e('Save Changes') ?>" /></p>
@@ -67,34 +173,22 @@ function docxhtml_settings_page() {
     </div>
     <?php
 }
-function docxhtml_results_page() {
-    $data = get_option('docxhtml_last_result');
-    ?>
-    <div class="wrap">
-        <h2>DOCX to HTML Results</h2>
-        <div id="free" class="updated"><p><strong>You are currently using the Free version of DOCX to HTML. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium version</a> Now!</strong><br/>By <a href="http://www.starsites.co.za">Starsites</a></p></div>
-        <form method="post" action="">
-        <table class="form-table">
-            <tr valign="top">
-                <th scope="row">Last Upload Result:</th>
-                <td><?php echo $data; ?></td>
-            </tr>
-        </table>
-        </form>
-    </div>
-    <?php
-}
 function docxhtml_help_page() {
     ?>
     <div class="wrap">
+        <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
         <h2>DOCX to HTML Help</h2>
-        <div id="free" class="updated"><p><strong>You are currently using the Free version of DOCX to HTML. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium version</a> Now!</strong><br/>By <a href="http://www.starsites.co.za">Starsites</a></p></div>
-        <table class="form-table">
-            <tr valign="top">
-                <th scope="row"><strong>Question:</strong></th>
-                <td><strong>Answer:</strong></td>
-            </tr>
-            <tr valign="top">
+        <form method="post" action="">
+        <table class="widefat fixed" style="margin-bottom:4px;">
+            <thead><tr valign="top">
+                <th scope="col" style="width:20%;"><strong>Question:</strong></th>
+                <th scope="col"><strong>Answer:</strong></th>
+            </tr></thead>
+            <tfoot><tr valign="top">
+                <th scope="col"><strong>Question:</strong></th>
+                <th scope="col"><strong>Answer:</strong></th>
+            </tr></tfoot>
+            <tbody><tr valign="top">
                 <th scope="row">How do I use this plugin?</th>
                 <td>Firstly the administrator of the blog should set a few settings on the Settings page.<br />
                     If that is done, you can just go to the DOCX to HTML page fill in the required information, select a .docx file on your computer and click on "Create Post Now!"</td>
@@ -122,85 +216,63 @@ function docxhtml_help_page() {
                 <th scope="row">What does the Error codes mean?</th>
                 <td>
                     <ol>
-                        <li>"You are not authorised to upload files."<br />You are not logged in or your account does not allow you to create a post.</li>
-                        <li>"POST exceeded maximum allowed size. Post size is: some_size - Maximum allowed is: another_size"<br />Your server is set to not handle more than the second amount of data in a single request.
-                            The first amount is the amount that is required for the file you are trying to upload.</li>
-                        <li>"No upload found in \$_FILES for 'docxhtml_file'"<br />The uploaded file could not be found.</li>
+                        <li>"You are not authorised to upload files."<br />
+                            <span class="description">You are not logged in or your account does not allow you to create a post.</span></li>
+                        <li>"POST exceeded maximum allowed size. Post size is: some_size - Maximum allowed is: another_size"<br />
+                            <span class="description">Your server is set to not handle more than the second amount of data in a single request.
+                            The first amount is the amount that is required for the file you are trying to upload.</span></li>
+                        <li>"No upload found in $_FILES for 'docxhtml_file'"<br />
+                            <span class="description">The uploaded file could not be found.</span></li>
                         <li>Upload Related Errors
                             <ol>
-                                <li>"The uploaded file exceeds the upload_max_filesize directive in php.ini"<br />Your server is set to not allow the upload of files as large as the one you are trying to upload.</li>
-                                <li>"The uploaded file exceeds the MAX_FILE_SIZE directive that was specified in the HTML form."<br />The form is set to handle only smaller file sizes that what you are trying to upload.</li>
-                                <li>"The uploaded file was only partially uploaded."<br />Somehow the file did not finish uploading.</li>
-                                <li>"No file was uploaded."<br />The file was not uploaded.</li>
-                                <li>"Missing a temporary folder."<br />The folder where the uploaded file was supposed to be is not found.</li>
+                                <li>"The uploaded file exceeds the upload_max_filesize directive in php.ini"<br />
+                                    <span class="description">Your server is set to not allow the upload of files as large as the one you are trying to upload.</span></li>
+                                <li>"The uploaded file exceeds the MAX_FILE_SIZE directive that was specified in the HTML form."<br />
+                                    <span class="description">The form is set to handle only smaller file sizes that what you are trying to upload.</span></li>
+                                <li>"The uploaded file was only partially uploaded."<br />
+                                    <span class="description">Somehow the file did not finish uploading.</span></li>
+                                <li>"No file was uploaded."<br />
+                                    <span class="description">The file was not uploaded.</span></li>
+                                <li>"Missing a temporary folder."<br />
+                                    <span class="description">The folder where the uploaded file was supposed to be is not found.</span></li>
                             </ol>
                         </li>
-                        <li>"Upload failed is_uploaded_file test."<br />The test to make sure that the file was uploaded, failed.</li>
-                        <li>"File has no name."<br />Uploaded file have no name and thus it can't be a file.</li>
-                        <li>"File exceeds the maximum allowed size."<br />The file is larger than what the system can handle.</li>
-                        <li>"File size outside allowed lower bound."<br />The file size is negative and tus it can't be a file.</li>
-                        <li>"Invalid file extension."<br />This plugin requires an extension of .docx. If it is not a docx, this plugin can't work.</li>
-                        <li>"The post could not be inserted. An unknown error occured."<br />While adding the post into the database, an error occured.</li>
-                        <li>"Not enough information provided to parse the file."<br />There are required information that was not found.</li>
-                        <li>"The file's contents could not be extracted to use."<br />The content could not be extracted to start the operation.</li>
+                        <li>"Upload failed is_uploaded_file test."<br />
+                            <span class="description">The test to make sure that the file was uploaded, failed.</span></li>
+                        <li>"File has no name."<br />
+                            <span class="description">Uploaded file have no name and thus it can't be a file.</span></li>
+                        <li>"File exceeds the maximum allowed size."<br />
+                            <span class="description">The file is larger than what the system can handle.</span></li>
+                        <li>"File size outside allowed lower bound."<br />
+                            <span class="description">The file size is negative and tus it can't be a file.</span></li>
+                        <li>"Invalid file extension."<br />
+                            <span class="description">This plugin requires an extension of .docx. If it is not a docx, this plugin can't work.</span></li>
+                        <li>"The post could not be inserted. An unknown error occured."<br />
+                            <span class="description">While adding the post into the database, an error occured.</span></li>
+                        <li>"Not enough information provided to parse the file."<br />
+                            <span class="description">There are required information that was not found.</span></li>
+                        <li>"The file's contents could not be extracted to use."<br />
+                            <span class="description">The content could not be extracted to start the operation.</span></li>
                         <li>"The temporary files created during the parse could not be deleted. The contents, however, might still have been extracted."
-                            <br />While this plugin works, temporary directories are created which should be removed afterwards.</li>
+                            <br /><span class="description">While this plugin works, temporary directories are created which should be removed afterwards.</span></li>
                     </ol>
                 </td>
             </tr>
+            <tr valign="top">
+                <th scope="row">What is the main purpose of this plugin's log?</th>
+                <td>If you are experiencing problems with this plugin (maybe after a WordPress upgrade), the issues will most probably be logged inside the Logs and 
+                    when contacting me for support, you can provide the log so that I can see what went wrong and release a fix in record time. Information collected by the log is: 
+                    Date &amp; Time; The result of the upload; The file name; The file size; The PHP version. Information is collected at each upload. 
+                    Information will not be sold provided to any third party without your consent.<br />
+                    <span class="description">This plugin does not distribute this information automatically to any server. This information is stored in a file.</span></td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">How can I be contacted?</th>
+                <td>If you have suggestions for future releases or have a problem, you can contact me from my website: <a href="http://www.starsites.co.za" target="_blank">http://www.starsites.co.za</a>.<br />
+                You can also request help from our Support Site: <a href="http://support.starsites.co.za" target="_blank">http://support.starsites.co.za</a>.</td>
+            </tr></tbody>
         </table>
-    </div>
-    <?php
-}
-function docxhtml_files_page() {
-    include("filehandler.php");
-    $list = dirList(dirname(__FILE__)."/../../uploads/media/", "filetree");
-    ?>
-    <div class="wrap">
-        <h2>DOCX to HTML Files</h2>
-        <script src="http://code.jquery.com/jquery-latest.js" type="text/javascript" ></script>
-        <link rel="stylesheet" href="http://jquery.bassistance.de/treeview/demo/screen.css" type="text/css" />
-        <link rel="stylesheet" href="http://jquery.bassistance.de/treeview/jquery.treeview.css" type="text/css" />
-        <script type="text/javascript" src="http://jquery.bassistance.de/treeview/jquery.treeview.js" ></script>
-        <script type="text/javascript" >
-            $(document).ready(function(){
-                $("#filetree").treeview();
-            });
-        </script>
-        <div id="free" class="updated"><p><strong>You are currently using the Free version of DOCX to HTML. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium version</a> Now!</strong><br/>By <a href="http://www.starsites.co.za">Starsites</a></p></div>
-        <div id="message" class="updated"><p><strong>Folders are created based on the name of the .docx file.</strong></p></div>
-        <p>Files are located at: <code><?php echo dirname(dirname(dirname(__FILE__)))."/uploads/media/" ?></code></p>
-        <?php echo $list; ?>
-    </div>
-    <?php
-}
-function docxhtml_upload_page() {
-    ?>
-    <div class="wrap">
-        <h2>DOCX to HTML Upload</h2>
-        <div id="free" class="updated"><p><strong>You are currently using the Free version of DOCX to HTML. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium version</a> Now!</strong><br/>By <a href="http://www.starsites.co.za">Starsites</a></p></div>
-    <form method="post" action="<?php echo plugins_url()."/docxhtml/upload.php"; ?>" enctype='multipart/form-data'>
-        <table class="form-table">
-            <?php settings_fields( 'docxhtml-upload-group' ); ?>
-            <tr valign="top">
-                <th scope="row">New Post Title</th>
-                <td><input id="post_title" type="text" size="30" name="docxhtml_post_title" value=""
-                    style="font-size:1.7em; line-height: 100%; outline: medium none; padding: 3px 4px; width:300px;" /></td>
-                <td>The name of the new post if the proccess was succesful. This is required.</td>
-            </tr>
-            <tr valign="top">
-                <th scope="row">New Post Categories</th>
-                <td><?php wp_dropdown_categories(array('hide_empty'=>0,'name'=>'docxhtml_post_cat1','selected'=>$category->parent,'hierarchical'=>true)); ?></td>
-                <td>Select the Category that should contain your post.</td>
-            </tr>
-            <tr valign="top">
-                <th scope="row">Docx File</th>
-                <td><input type="file" name="docxhtml_file" size="30" value="" style="line-height: 100%; outline: medium none; padding: 3px 4px; width:300px;" /></td>
-                <td>Select the .docx file on your computer that should be parsed.</td>
-            </tr>
-        </table>
-        <p class="submit"><input type="submit" class="button-primary" value="<?php _e('Create Post Now!') ?>" /></p>
-    </form>
+        </form>
     </div>
     <?php
 }
