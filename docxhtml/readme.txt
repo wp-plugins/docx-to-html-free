@@ -4,6 +4,7 @@ Donate link: http://starsites.co.za/
 Tags: doc, parse, html, generate, image, upload
 Requires at least: 3.0
 Tested up to: 3.0.3
+Stable tag: 1.2
 
 This plugin will process an uploaded .docx file, extracting all the content as a post.
 
