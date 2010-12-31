@@ -1,5 +1,5 @@
-=== DOCX to HTML Premium ===
-Contributors: Jacotheron/starsites
+=== DOCX to HTML Free ===
+Contributors: Jacotheron/Starsites
 Donate link: http://starsites.co.za/
 Tags: doc, parse, html, generate, image, upload
 Requires at least: 2.8
