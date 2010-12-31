@@ -3,7 +3,7 @@
 Plugin Name: DOCX to HTML FREE
 Plugin URI: http://starsites.co.za/
 Description: This plugin will upload a docx file to extract all the contents (text/images) and then post the contents.
-Version: 1.2
+Version: 1.2.1
 Author: Jaco Theron
 Author URI: http://starsites.co.za/
 */
@@ -26,8 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 // create custom plugin settings menu
 add_action('admin_menu','docxhtml_create_menu');
-register_deactivation_hook(__FILE__,'docxhtml_deactivate');
-register_activation_hook(__FILE__,'docxhtml_activate');
 function docxhtml_create_menu() {
     //create new top-level menu
     add_menu_page('DOCX to HTML','DOCX to HTML','publish_posts','docxhtml','docxhtml_upload_page',plugins_url('/images/icon.png',__FILE__));
@@ -41,13 +39,6 @@ function docxhtml_register_settings() {
     //register our settings
     register_setting('docxhtml-settings-group','docxhtml_publish');
     register_setting('docxhtml-results-group','docxhtml_last_result');
-}
-function docxhtml_deactivate() {
-    //register our settings
-    unregister_setting('docxhtml-settings-group','docxhtml_publish','docxhtml_unregister_void');
-    unregister_setting('docxhtml-results-group','docxhtml_last_result','docxhtml_unregister_void');
-}
-function docxhtml_activate() {
 }
 function docxhtml_unregister_void(){
     return "";
