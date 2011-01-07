@@ -32,7 +32,13 @@ function docxhtml_create_menu() {
     add_submenu_page('docxhtml','DOCX to HTML Results','Last Result','publish_posts','docxhtml_result','docxhtml_results_page');
     add_submenu_page('docxhtml','DOCX to HTML Logs','Result Logs','manage_options','docxhtml_logs','docxhtml_logs_page');
     add_submenu_page('docxhtml','DOCX to HTML Settings','Settings','manage_options','docxhtml_settings','docxhtml_settings_page');
-    add_submenu_page('docxhtml','DOCX to HTML Help','Help','publish_posts','docxhtml_help','docxhtml_help_page');
+    add_submenu_page('docxhtml','DOCX to HTML Help','Help','publish_posts','docxhtml_help','docxhtml_help_page');//call register settings function
+    add_action('admin_init','docxhtml_register_settings');
+}
+function docxhtml_register_settings() {
+    //register our settings
+    register_setting('docxhtml-settings-group','docxhtml_publish');
+    register_setting('docxhtml-results-group','docxhtml_last_result');
 }
 function docxhtml_upload_page() {
     ?>
