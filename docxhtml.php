@@ -1,14 +1,14 @@
 <?php
 /*
-Plugin Name: DOCX to HTML FREE
-Plugin URI: http://starsites.co.za/
+Plugin Name: DOCX to HTML Free
+Plugin URI: http://www.starsites.co.za/
 Description: This plugin will upload a docx file to extract all the contents (text/images) and then post the contents.
-Version: 1.2.1
+Version: 1.2.2
 Author: Jaco Theron
-Author URI: http://starsites.co.za/
+Author URI: http://www.starsites.co.za/
 */
 /*
-DOCX to HTML Premium WordPress Plugin
+DOCX to HTML Free WordPress Plugin
 Copyright (C) 2010  Jacotheron(Starsites) - info@starsites.co.za
 
 This program is free software: you can redistribute it and/or modify
@@ -30,25 +30,16 @@ function docxhtml_create_menu() {
     //create new top-level menu
     add_menu_page('DOCX to HTML','DOCX to HTML','publish_posts','docxhtml','docxhtml_upload_page',plugins_url('/images/icon.png',__FILE__));
     add_submenu_page('docxhtml','DOCX to HTML Results','Last Result','publish_posts','docxhtml_result','docxhtml_results_page');
+    add_submenu_page('docxhtml','DOCX to HTML Logs','Result Logs','manage_options','docxhtml_logs','docxhtml_logs_page');
     add_submenu_page('docxhtml','DOCX to HTML Settings','Settings','manage_options','docxhtml_settings','docxhtml_settings_page');
     add_submenu_page('docxhtml','DOCX to HTML Help','Help','publish_posts','docxhtml_help','docxhtml_help_page');
-    //call register settings function
-    add_action('admin_init','docxhtml_register_settings');
-}
-function docxhtml_register_settings() {
-    //register our settings
-    register_setting('docxhtml-settings-group','docxhtml_publish');
-    register_setting('docxhtml-results-group','docxhtml_last_result');
-}
-function docxhtml_unregister_void(){
-    return "";
 }
 function docxhtml_upload_page() {
     ?>
     <div class="wrap">
-        <h2>DOCX to HTML Upload</h2>
         <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
-    <form method="post" action="<?php echo plugins_url()."/docxhtml/upload.php"; ?>" enctype='multipart/form-data'>
+        <h2>DOCX to HTML Upload</h2>
+    <form method="post" action="<?php echo plugins_url()."/docx-to-html-free/upload.php"; ?>" enctype='multipart/form-data'>
         <?php settings_fields( 'docxhtml-upload-group' ); ?>
         <table class="form-table">
             <tr valign="top">
@@ -63,6 +54,8 @@ function docxhtml_upload_page() {
                 <td><select name="docxhtml_post_status" style="width:100px;" >
                     <option value="draft" <?php echo ($post_publish == "draft") ? 'selected="selected"':"" ?>>Draft</option>
                     <option value="publish" <?php echo ($post_publish == "publish") ? 'selected="selected"':"" ?>>Publish</option>
+                    <option value="pending" <?php echo ($post_publish == "pending") ? 'selected="selected"':"" ?>>Pending</option>
+                    <option value="future" <?php echo ($post_publish == "future") ? 'selected="selected"':"" ?>>Future</option>
                 </select></td>
                 <td><span class="description">Post/Page's published state. This is the state of the Post/Page after the content is processed.</span></td>
             </tr>
@@ -75,14 +68,9 @@ function docxhtml_upload_page() {
                 <td><span class="description">Is the current document a Page or a Post.<br />Default to Post.</span></td>
             </tr>
             <tr valign="top">
-                <th scope="row">Post/Page ID</th>
-                <td><input type="text" size="30" name="docxhtml_post_id" value="0" style="padding: 3px 4px; width:300px;" /></td>
-                <td><span class="description">The ID of a Post/Page to override. Usefull if you want to extract a specific Word File again to replace the contents of the previous Post/Page.<br />
-                        0 will create a new post.</span></td>
-            </tr>
-            <tr valign="top">
                 <th scope="row">New Post Categories <span style="color:red;">*</span></th>
-                <td><?php wp_dropdown_categories(array('hide_empty'=>0,'name'=>'docxhtml_post_cat1','selected'=>$category->parent,'hierarchical'=>true)); ?></td>
+                <td><?php wp_dropdown_categories(array('hide_empty'=>0,'name'=>'docxhtml_post_cat1','selected'=>$category->parent,'hierarchical'=>true)); ?>
+                </td>
                 <td><span class="description">Select the Category that should contain your Post.<br />
                         Required. Default to First Category of your Blog</span></td>
             </tr>
@@ -121,29 +109,84 @@ function docxhtml_results_page() {
     $data = get_option('docxhtml_last_result');
     ?>
     <div class="wrap">
-        <h2>DOCX to HTML Results</h2>
         <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
-        <form method="post" action="">
+        <h2>DOCX to HTML Results</h2>
         <table class="widefat fixed">
             <tr valign="top">
                 <th scope="row" style="width:150px;">Last Upload Result:</th>
                 <td><?php echo $data; ?></td>
             </tr>
         </table>
-        </form>
+        <p><span style="padding-top:10px;" ><a href="./admin.php?page=docxhtml" class="button-primary" >Create Another One</a></span></p>
+    </div>
+    <?php
+}
+function docxhtml_logs_page() {
+    $dir = dirname(__FILE__);
+    $length = strlen($dir);
+    if($dir[$length -1] != "/"){
+        $open = fopen(dirname(__FILE__)."/docxhtml-log.csv", "r");
+    } else {
+        $open = fopen(dirname(__FILE__)."./docxhtml-log.csv", "r");
+    }
+    $contentarr = array();
+    while(!feof($open)){
+        $contentarr = array_merge($contentarr, array(fgetcsv($open)));
+    }
+    $close = fclose($open);
+    ?>
+    <div class="wrap">
+        <h2>DOCX to HTML Logs</h2>
+        <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
+        <div class="updated"><p><strong>When experiencing problems, you can contact me through my website and copy this  into the email. 
+            This will allow me to identify your problem very quickly and then also solve it a lot faster.</strong></p></div>
+        <table class="widefat fixed" style="margin-bottom:4px;">
+            <thead valign="top"><tr>
+                <th scope="row" style="width:40px;">Nr:</th>
+                <th scope="col" style="width:150px;">Date:</th>
+                <th scope="col">Result:</th>
+                <th scope="col">File Name:</th>
+                <th scope="col">File Size:</th>
+                <th scope="col" style="max-width:100px;">PHP Version:</th>
+                </tr>
+            </thead>
+            <tfoot valign="top"><tr>
+                <th scope="col">Nr</th>
+                <th scope="col">Date</th>
+                <th scope="col">Result</th>
+                <th scope="col">File Name</th>
+                <th scope="col">File Size</th>
+                <th scope="col">PHP Version</th>
+            </tr></tfoot>
+            <?php 
+            foreach($contentarr as $key => $value){
+                if(is_array($value)){
+                    if($key != 0){
+                        echo "<tbody><tr>";
+                        echo "<td>".$key."</td>";
+                        echo "<td>".$value[0]."</td>";
+                        echo "<td>".$value[1]."</td>";
+                        echo "<td>".$value[2]."</td>";
+                        echo "<td>".$value[3]."</td>";
+                        echo "<td>".$value[4]."</td>";
+                        echo "</tr></tbody>";
+                    }
+                }
+            }
+            ?>
+        </table>
     </div>
     <?php
 }
 function docxhtml_settings_page() {
     ?>
     <div class="wrap">
-        <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
         <h2>DOCX to HTML Settings</h2>
-        
+        <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
         <?php if(isset($_GET['updated'])=="true"){ ?>
-            <div id="message" class="updated"><p><strong>DOCX to HTML: Your settings have been saved successfully.</strong></p></div>
+            <div class="updated"><p><strong>DOCX to HTML: Your settings have been saved successfully.</strong></p></div>
         <?php }elseif(isset($_GET['updated']) && $_GET['updated'] != "true"){ ?>
-                <div id="message" class="updated"><p><strong>DOCX to HTML: Your settings could not be updated.</strong></p></div>
+                <div class="updated"><p><strong>DOCX to HTML: Your settings could not be updated.</strong></p></div>
         <?php } ?>
         <form method="post" action="options.php">
             <?php settings_fields('docxhtml-settings-group'); ?>
@@ -167,9 +210,8 @@ function docxhtml_settings_page() {
 function docxhtml_help_page() {
     ?>
     <div class="wrap">
-        <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
         <h2>DOCX to HTML Help</h2>
-        <form method="post" action="">
+        <div class="updated"><p><strong>You are using the Free version. Get the <a href="http://wpplugins.com/plugin/305/docx-to-html-premium">Premium</a> version now!</strong></p></div>
         <table class="widefat fixed" style="margin-bottom:4px;">
             <thead><tr valign="top">
                 <th scope="col" style="width:20%;"><strong>Question:</strong></th>
@@ -260,10 +302,10 @@ function docxhtml_help_page() {
             <tr valign="top">
                 <th scope="row">How can I be contacted?</th>
                 <td>If you have suggestions for future releases or have a problem, you can contact me from my website: <a href="http://www.starsites.co.za" target="_blank">http://www.starsites.co.za</a>.<br />
-                You can also request help from our Support Site: <a href="http://support.starsites.co.za" target="_blank">http://support.starsites.co.za</a>.</td>
+                You can also request help from our Support Site: <a href="http://support.starsites.co.za" target="_blank">http://support.starsites.co.za</a>. Free version users' queries will have a lower priority
+                than Premium users' queries, but we do offer support for the Free users.</td>
             </tr></tbody>
         </table>
-        </form>
     </div>
     <?php
 }
