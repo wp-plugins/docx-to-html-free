@@ -1,5 +1,5 @@
 <?php
-/**CLASS DOCXtoHTML will convert a .docx file to (x)html.
+/**CLASS DOCXtoHTML Free will convert a .docx file to (x)html.
  *
  * This class uses the dUnzip2 class from phpclasses.org and requires extension ZLib
  * This class can only handle 1 single file per instance.
@@ -35,6 +35,12 @@ class DOCXtoHTML {
      * @since 1.0
      */
     var $output = "";
+    /**
+     * @var Int This is the maximum width of an image after the process
+     * @since 1.0
+     * @update 1.2
+     */
+    var $image_max_width = 0;
     /**
      * @var String The path to where the content is extracted
      * @since 1.0
@@ -350,6 +356,43 @@ class DOCXtoHTML {
                     $imagepath = $this->rels[$rid][1];
                     $return = "src='".$this->imagePathPrefix.$imagepath."' alt='' />";
                     break;
+                case "W:B"://word style for bold
+                    if($this->tagcloset == "</strong>"){
+                        break;
+                    }
+                    $return = "<strong>";//return the text (add spaces after)
+                    $this->tagcloset = "</strong>";
+                    break;
+                case "W:I"://word style for italics
+                    if($this->tagcloset == "</em>"){
+                        break;
+                    }
+                    $return = "<em>";//return the text (add spaces after)
+                    $this->tagcloset = "</em>";
+                    break;
+                case "W:U"://word style for underline
+                    if($this->tagcloset == "</span>"){
+                        break;
+                    }
+                    $return = "<span style='text-decoration:underline;'>";//return the text (add spaces after)
+                    $this->tagcloset = "</span>";
+                    break;
+                case "W:STRIKE"://word style for strike-throughs
+                    if($this->tagcloset == "</span>"){
+                        break;
+                    }
+                    $return = "<span style='text-decoration:line-through;'>";//return the text (add spaces after)
+                    $this->tagcloset = "</span>";
+                    break;
+                case "W:VERTALIGN"://word style for super- and subscripts
+                    if($data['attributes']['W:VAL'] == "subscript"){
+                        $return = "<sub>";
+                        $this->tagcloset = "</sub>";
+                    }elseif($data['attributes']['W:VAL'] == "superscript"){
+                        $return = "<sup>";
+                        $this->tagcloset = "</sup>";
+                    }
+                    break;
                 default:
                     break;
             }
@@ -417,10 +460,11 @@ class DOCXtoHTML {
     /**
      * This function handles the image proccessing
      * @param String $url Path to the file to proccess
+     * @param Int $thumb The maximum width of an proccessed image
      * @return String The binary of the image that was created
      * @since 1.0
      */
-    function process($url) {
+    function process($url, $thumb=0) {
         $tmp0 = imageCreateFromString(fread(fopen($url, "rb"), filesize( $url )));
         if ($tmp0) {
             $dim = Array ('w' => imageSx($tmp0), 'h' => imageSy($tmp0));
