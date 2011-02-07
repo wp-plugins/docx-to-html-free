@@ -1,5 +1,5 @@
 <?php
-/**CLASS DOCXtoHTML will convert a .docx file to (x)html.
+/**CLASS DOCXtoHTML Premium will convert a .docx file to (x)html.
  *
  * This class uses the dUnzip2 class from phpclasses.org and requires extension ZLib
  * This class can only handle 1 single file per instance.
@@ -35,6 +35,12 @@ class DOCXtoHTML {
      * @since 1.0
      */
     var $output = "";
+    /**
+     * @var Int This is the maximum width of an image after the process
+     * @since 1.0
+     * @update 1.2
+     */
+    var $image_max_width = 0;
     /**
      * @var String The path to where the content is extracted
      * @since 1.0
@@ -80,6 +86,11 @@ class DOCXtoHTML {
      * @since 1.1
      */
      var $tagcloset = "";
+    /**
+     * @val Bool SWhould a thumbnail be created as well as to keep the original image in the folder
+     * @since 1.3
+     */
+     var $keepOriginalImage = false;
     /**
      * This function start the timer of this script
      *
@@ -139,33 +150,40 @@ class DOCXtoHTML {
      * This requires that the vars be set to start
      * @return Bool True when successfully completed
      * @since 1.0
+     * @modified 1.2.3
      */
     function Init(){
         if($this->testInput()==false){
+            $this->time = $this->timer_stop(0);
             $this->error = "11. Not enough information provided to parse the file.";
             return false;
         }
         if($this->UnZipDocx()==false){
+            $this->time = $this->timer_stop(0);
             $this->error = "12. The file's contents could not be extracted to use.";
             return false;
         }
         if($this->extractRelXML()==false){
             $this->DeleteTemps();
+            $this->time = $this->timer_stop(0);
             $this->error = "13. The file data could not be found or read.";
             return false;
         }
         if($this->extractMedia()==false){
             $this->DeleteTemps();
+            $this->time = $this->timer_stop(0);
             $this->error = "14. The Media could not be found.";
             return false;
         }
         if($this->extractXML()==false){
             $this->DeleteTemps();
+            $this->time = $this->timer_stop(0);
             $this->error = "15. The file data could not be found or read.";
             return false;
         }
         if($this->DeleteTemps()==false){
-            $this->error = "16. The temporary files created during the parse could not be deleted.
+            $this->time = $this->timer_stop(0);
+            $this->error = "16. The temporary files created during the process could not be deleted.
                 The contents, however, might still have been extracted.";
             return false;
         }
@@ -186,6 +204,26 @@ class DOCXtoHTML {
         }
     }
     /**
+     * This function handles the extracting of the zipped contents to the temp folder
+     * @return Bool True on success
+     * @since 1.0
+     * @modified 1.2.3
+     */
+    function UnZipDocx(){
+        require("dUnzip2.inc.php");
+        $targetDir = $this->getUniqueDir();
+        $this->tempDir = $targetDir;
+        $baseDir = "";
+        $maintainStructure = true;
+        $unzip = new dUnzip2($this->docxPath);
+        $unzip->unzipAll($targetDir, $baseDir, $maintainStructure);
+        unset($unzip);
+        if(is_dir($this->tempDir."/word")){
+            return true;
+        }
+        return false;
+    }
+    /**
      * This function will get a unique directory for the temporary files
      * @return string The first unique directory the function have found
      * @since 1.0
@@ -203,32 +241,17 @@ class DOCXtoHTML {
         return $targetDir.$i;
     }
     /**
-     * This function handles the extracting of the zipped contents to the temp folder
-     * @return Bool True on success
-     * @since 1.0
-     */
-    function UnZipDocx(){
-        require("dUnzip2.inc.php");
-        $targetDir = $this->getUniqueDir();
-        $this->tempDir = $targetDir;
-        $baseDir = "";
-        $maintainStructure = true;
-        $unzip = new dUnzip2($this->docxPath);
-        if($unzip->unzipAll($targetDir, $baseDir, $maintainStructure)){
-            $this->status = "Contents Unzipped...";
-            return true;
-        }
-        unset($unzip);
-        return true;
-    }
-    /**
      * This function handles the extraction of the XML building the Rels array
      * @return Bool True on success
      * @since 1.1
+     * @modified 1.2.3
      */
     function extractRelXML(){
         $xmlFile = $this->tempDir."/word/_rels/document.xml.rels";
         $xml = file_get_contents($xmlFile);
+        if($xml == false){
+            return false;
+        }
         $xml = mb_convert_encoding($xml, 'UTF-8', mb_detect_encoding($xml));
         $parser = xml_parser_create('UTF-8');
         $data = array();
@@ -237,7 +260,7 @@ class DOCXtoHTML {
             if($value['tag']=="RELATIONSHIP"){
                 //it is an relationship tag, get the ID attr as well as the TARGET and (if set, the targetmode)set into var.
                 if(isset($value['attributes']['TARGETMODE'])){
-                    $this->rels[$value['attributes']['ID']] = array(0 => $value['attributes']['TARGET'], 2=> $value['attributes']['TARGETMODE']);
+                    $this->rels[$value['attributes']['ID']] = array(0 => $value['attributes']['TARGET'], 3=> $value['attributes']['TARGETMODE']);
                 } else {
                     $this->rels[$value['attributes']['ID']] = array(0 => $value['attributes']['TARGET']);
                 }
@@ -249,10 +272,16 @@ class DOCXtoHTML {
      * This function handles the extraction of the Media
      * @return Bool True on success
      * @since 1.1
+     * @modified 1.2.3
      */
     function extractMedia(){
         $wordFolder = $this->tempDir."/word/";
+        if(!is_dir($wordFolder."media")){
+            return true;
+            //there are no images to extract
+        }
         $this->getMediaFolder();
+        $i = false;
         foreach($this->rels as $key => $value){
             if(strtolower(pathinfo($value[0],PATHINFO_EXTENSION))=="png" || strtolower(pathinfo($value[0],PATHINFO_EXTENSION))=="gif" || strtolower(pathinfo($value[0],PATHINFO_EXTENSION))=="jpg"
                 || strtolower(pathinfo($value[0],PATHINFO_EXTENSION))=="jpeg"){
@@ -260,8 +289,15 @@ class DOCXtoHTML {
                 $fileType = strtolower(pathinfo($value[0],PATHINFO_EXTENSION));
                 //set the file type so that the correct image creation function can be called
                 if(is_file($wordFolder.$value[0])){
-                    $image = $this->process($wordFolder.$value[0], $this->image_max_width);
+                    if($this->keepOriginalImage == true){
+                        $image = $this->processImage($wordFolder.$value[0], $this->image_max_width);
+                        $imageorr = $this->processImage($wordFolder.$value[0]);
+                    } else {
+                        $image = $this->processImage($wordFolder.$value[0], $this->image_max_width);
+                        $imageorr = false;
+                    }
                     if($image){
+                        $i = true;//this have been resourceful, do not return false
                         //the image was successfully created, now write to file
                         $filename = pathinfo($value[0],PATHINFO_BASENAME);
                         if($fileType=="png"){
@@ -270,7 +306,7 @@ class DOCXtoHTML {
                                 $this->rels[$key][1] = $this->mediaDir."/".$filename;
                             }
                         } elseif($fileType=="gif"){
-                            if(imagegif($image,$this->mediaDir."/".$filename,0)){
+                            if(imageGif($image,$this->mediaDir."/".$filename,0)){
                                 imagedestroy($image);
                                 $this->rels[$key][1] = $this->mediaDir."/".$filename;
                             }
@@ -281,90 +317,32 @@ class DOCXtoHTML {
                             }
                         }
                     }
+                    if($imageorr){
+                        $i = true;//this have been resourceful, do not return false
+                        //the image was successfully created, now write to file
+                        $pathinfo = pathinfo($value[0]);
+                        $filename = $pathinfo['filename']."_big.".$pathinfo['extension'];
+                        if($fileType=="png"){
+                            if(imagePng($imageorr,$this->mediaDir."/".$filename,0,PNG_NO_FILTER)){
+                                imagedestroy($imageorr);
+                                $this->rels[$key][2] = $this->mediaDir."/".$filename;
+                            }
+                        } elseif($fileType=="gif"){
+                            if(imageGif($imageorr,$this->mediaDir."/".$filename,0)){
+                                imagedestroy($imageorr);
+                                $this->rels[$key][2] = $this->mediaDir."/".$filename;
+                            }
+                        } else {
+                            if(imageJpeg($imageorr,$this->mediaDir."/".$filename,100)){
+                                imagedestroy($imageorr);
+                                $this->rels[$key][2] = $this->mediaDir."/".$filename;
+                            }
+                        }
+                    }
                 }
             }
         }
-        return true;
-    }
-    /**
-     * This function handles the extraction of the XML file data used to construct the HTML
-     * @return Bool True on success
-     * @since 1.0
-     */
-    function extractXML(){
-        $xmlFile = $this->tempDir."/word/document.xml";
-        $xml = file_get_contents($xmlFile);
-        $xml = mb_convert_encoding($xml, 'UTF-8', mb_detect_encoding($xml));
-        $parser = xml_parser_create('UTF-8');
-        $data = array();
-        xml_parse_into_struct($parser, $xml, $data);
-        $html4output = "";
-        $i = 0;
-        while(isset($data[$i])){
-            $html4output .= $this->buildxhtml($data[$i]);
-            $i++;
-        }
-        $this->output = ($html4output);
-        $this->status = "Contents Extracted...";
-        return true;
-    }
-    /**
-     * This function do the actual building of the HTML data string
-     * @param Array $data An array containing the data of the XML tag currently proccessed
-     * @return string The corresponding HTML for the tag that was proccessed
-     * @since 1.0 Modified: 1.2
-     */
-    function buildxhtml($data){
-        if(!is_array($data)){
-            return;
-            //the value should be an array otherwise break;
-        }
-        $return = "";
-        if($data['type']=="open"){
-            //if it is an open tag see if it should be parsed
-            switch ($data['tag']) {
-                case "W:P"://the paragrah begins
-                    $return = "<p>";
-                    break;
-                case "W:DRAWING"://the image begins
-                    $return = "<img ";
-                    break;
-                case "WP:INLINE"://the image style is attached
-                    $return = "style='display:inline;' ";
-                    break;
-                default:
-                    break;
-            }
-        }elseif($data['type']=="complete"){
-            //if it is an complete tag see if it should be parsed
-            switch ($data['tag']) {
-                case "W:T":
-                    $return = $data['value'].$this->tagcloset;//return the text (add spaces after)
-                    $this->tagcloset = "";
-                    break;
-                case "V:TEXTPATH":
-                    $return = $data['attributes']['STRING'];//add word art text (this is also important)
-                    break;
-                case "A:BLIP"://the image data
-                    $rid = $data['attributes']['R:EMBED'];
-                    $imagepath = $this->rels[$rid][1];
-                    $return = "src='".$this->imagePathPrefix.$imagepath."' alt='' />";
-                    break;
-                default:
-                    break;
-            }
-        }elseif($data['type']=="close"){
-            //if it is an close tag see if it should be parsed
-            switch ($data['tag']) {
-                case "W:P"://the paragraph ends
-                    $return = $this->tagclosep."</p>";
-                    $this->tagclosep = "";
-                    break;
-                default:
-                    break;
-            }
-        }
-        return $return;
+        return $i;
     }
     /**
      * This function creates the folder that will contain the media after the move
@@ -385,6 +363,218 @@ class DOCXtoHTML {
         } else {
             return false;
         }
+    }
+    /**
+     * This function handles the image proccessing
+     * @param String $url Path to the file to proccess
+     * @param Int $thumb The maximum width of an proccessed image
+     * @return String The binary of the image that was created
+     * @since 1.0
+     */
+    function processImage($url, $thumb=0) {
+        $tmp0 = imageCreateFromString(fread(fopen($url, "rb"), filesize( $url )));
+        if ($tmp0) {
+            if($thumb == 0) {
+                $dim = Array ('w' => imageSx($tmp0), 'h' => imageSy($tmp0));
+            } else {
+                if(imagesx($tmp0)<=$thumb){
+                    if (imageSy($tmp0) > imageSx($tmp0)){
+                        $dim = Array ('w' => imageSx($tmp0), 'h' => imageSy($tmp0));
+                    } else {
+                        $dim = Array ('w' => imageSx($tmp0), 'h' => imageSy($tmp0));
+                    }
+                } else {
+                    $dim = Array ('w' => $thumb, 'h' => round(imageSy($tmp0)*$thumb/imageSx($tmp0)));
+                }
+            }
+            $tmp1 = imageCreateTrueColor ( $dim [ 'w' ], $dim [ 'h' ] );
+            if ( imagecopyresized  ( $tmp1 , $tmp0, 0, 0, 0, 0, $dim [ 'w' ], $dim [ 'h' ], imageSx ( $tmp0 ), imageSy ( $tmp0 ) ) ) {
+                imageDestroy ( $tmp0 );
+                return $tmp1;
+            } else {
+                imageDestroy ( $tmp0 );
+                imageDestroy ( $tmp1 );
+                return $this -> null;
+            }
+        } else {
+            return $this -> null;
+        }
+    }
+    /**
+     * This function handles the extraction of the XML file data used to construct the HTML
+     * @return Bool True on success
+     * @since 1.0
+     * @modified 1.2.3
+     */
+    function extractXML(){
+        $xmlFile = $this->tempDir."/word/document.xml";
+        $xml = file_get_contents($xmlFile);
+        if($xml == false){
+            return false;
+        }
+        $xml = mb_convert_encoding($xml, 'UTF-8', mb_detect_encoding($xml));
+        $parser = xml_parser_create('UTF-8');
+        $data = array();
+        xml_parse_into_struct($parser, $xml, $data);
+        //echo "<pre>";
+        //print_r($data);
+        //echo "</pre>";
+        $html4output = "";
+        $i = 0;
+        while(isset($data[$i])){
+            $html4output .= $this->buildhtml($data[$i]);
+            $i++;
+        }
+        $this->output = $html4output;
+        $this->status = "Contents Extracted...";
+        if(empty($html4output)){
+            return false;
+        }
+        return true;
+    }
+    /**
+     * This function do the actual building of the HTML data string
+     * @param Array $data An array containing the data of the XML tag currently proccessed
+     * @return string The corresponding HTML for the tag that was proccessed
+     * @since 1.0 Modified: 1.2.3
+     */
+    function buildhtml($data){
+        $return = "";
+        if(!is_array($data)){
+            return $return;
+            //the value should be an array otherwise break;
+        }
+        if($data['type']=="open"){
+            //if it is an open tag see if it should be parsed
+            switch ($data['tag']) {
+                case "W:P"://the paragrah begins
+                    $return = "<p>";
+                    break;
+                case "W:TBL"://the table is initiated
+                    $return = "<table border='1'>";
+                    break;
+                case "W:TR"://the table row is initiated
+                    $return = "<tr>";
+                    break;
+                case "W:TC"://the table cell is initiated
+                    $return = "<td>";
+                    break;
+                case "W:HYPERLINK"://the hyperlink is initiated
+                    $rid = $data['attributes']['R:ID'];
+                    $path = $this->rels[$rid][0];
+                    $target = $this->rels[$rid][3];
+                    //now determine which type of link it is
+                    if(strtolower($target) == "external"){
+                        //this is an external link to a website
+                        $return = "<a href='".$path."'>";
+                    } elseif(isset($data['attributes']['W:ANCHOR'])){
+                        $return = "<a href='#".$data['attributes']['W:ANCHOR']."'>";
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }elseif($data['type']=="complete"){
+            //if it is an complete tag see if it should be parsed
+            switch ($data['tag']) {
+                case "W:T":
+                    $return = $data['value'].$this->tagcloset;//return the text (add spaces after)
+                    $this->tagcloset = "";
+                    break;
+                case "V:TEXTPATH":
+                    $return = $data['attributes']['STRING'];//add word art text (this is also important)
+                    break;
+                case "A:BLIP"://the image data
+                    $rid = $data['attributes']['R:EMBED'];
+                    $imagepath = $this->rels[$rid][1];
+                    $imagebigpath = $this->rels[$rid][2];
+                    if($this->keepOriginalImage == true){
+                        $return = "<a href='".$this->imagePathPrefix.$imagebigpath."' target='_blank' >
+                            <img style='display:inline;' src='".$this->imagePathPrefix.$imagepath."' alt='' />
+                            </a>";
+                    } else {
+                        $return = "<img style='display:inline;' src='".$this->imagePathPrefix.$imagepath."' alt='' />";
+                    }
+                    break;
+                case "W:PSTYLE"://word styles used for headings etc.
+                    if($data['attributes']['W:VAL'] == "Heading1"){
+                        $return = "<h1>";
+                        $this->tagclosep = "</h1>";
+                    }elseif($data['attributes']['W:VAL'] == "Heading2"){
+                        $return = "<h2>";
+                        $this->tagclosep = "</h2>";
+                    }elseif($data['attributes']['W:VAL'] == "Heading3"){
+                        $return = "<h3>";
+                        $this->tagclosep = "</h3>";
+                    }
+                    break;
+                case "W:B"://word style for bold
+                    if($this->tagcloset == "</strong>"){
+                        break;
+                    }
+                    $return = "<strong>";//return the text (add spaces after)
+                    $this->tagcloset = "</strong>";
+                    break;
+                case "W:I"://word style for italics
+                    if($this->tagcloset == "</em>"){
+                        break;
+                    }
+                    $return = "<em>";//return the text (add spaces after)
+                    $this->tagcloset = "</em>";
+                    break;
+                case "W:U"://word style for underline
+                    if($this->tagcloset == "</span>"){
+                        break;
+                    }
+                    $return = "<span style='text-decoration:underline;'>";//return the text (add spaces after)
+                    $this->tagcloset = "</span>";
+                    break;
+                case "W:STRIKE"://word style for strike-throughs
+                    if($this->tagcloset == "</span>"){
+                        break;
+                    }
+                    $return = "<span style='text-decoration:line-through;'>";//return the text (add spaces after)
+                    $this->tagcloset = "</span>";
+                    break;
+                case "W:VERTALIGN"://word style for super- and subscripts
+                    if($data['attributes']['W:VAL'] == "subscript"){
+                        $return = "<sub>";
+                        $this->tagcloset = "</sub>";
+                    }elseif($data['attributes']['W:VAL'] == "superscript"){
+                        $return = "<sup>";
+                        $this->tagcloset = "</sup>";
+                    }
+                    break;
+                case "W:BOOKMARKSTART"://word style for bookmarks/internal links
+                    $return = "<a id='".$data['attributes']['W:NAME']."'></a>";
+                    break;
+                default:
+                    break;
+            }
+        }elseif($data['type']=="close"){
+            //if it is an close tag see if it should be parsed
+            switch ($data['tag']) {
+                case "W:P"://the paragraph ends
+                    $return = $this->tagclosep."</p>";
+                    $this->tagclosep = "";
+                    break;
+                case "W:TC"://the table cell ends
+                    $return = "</td>";
+                    break;
+                case "W:TR"://the table row ends
+                    $return = "</tr>";
+                    break;
+                case "W:TBL"://the table ends
+                    $return = "</table>";
+                    break;
+                case "W:HYPERLINK"://the hyperlink ends
+                    $return = "</a>";
+                    break;
+                default:
+                    break;
+            }
+        }
+        return $return;
     }
     /**
      * Recursive directory creation based on full path.
@@ -413,29 +603,6 @@ class DOCXtoHTML {
             return $this->mkdir_p( $target );
         }
         return false;
-    }
-    /**
-     * This function handles the image proccessing
-     * @param String $url Path to the file to proccess
-     * @return String The binary of the image that was created
-     * @since 1.0
-     */
-    function process($url) {
-        $tmp0 = imageCreateFromString(fread(fopen($url, "rb"), filesize( $url )));
-        if ($tmp0) {
-            $dim = Array ('w' => imageSx($tmp0), 'h' => imageSy($tmp0));
-            $tmp1 = imageCreateTrueColor ( $dim [ 'w' ], $dim [ 'h' ] );
-            if ( imagecopyresized  ( $tmp1 , $tmp0, 0, 0, 0, 0, $dim [ 'w' ], $dim [ 'h' ], imageSx ( $tmp0 ), imageSy ( $tmp0 ) ) ) {
-                imageDestroy ( $tmp0 );
-                return $tmp1;
-            } else {
-                imageDestroy ( $tmp0 );
-                imageDestroy ( $tmp1 );
-                return $this -> null;
-            }
-        } else {
-            return $this -> null;
-        }
     }
     /**
      * This function concludes the class by removing all te temporary files and folders as well as unsetting all variables not required
@@ -482,4 +649,4 @@ class DOCXtoHTML {
         }
     }
 }
-?>
+#EOF-----------
