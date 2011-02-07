@@ -45,7 +45,7 @@ if(isset($_POST["PHPSESSID"])){
 }
 session_start();
 
-//get the max size that POST data may be and see if it were exceeded, if it did, fail with error message
+//get the max size that POST data may be and see it it were exceeded, if it did, fail with error message
 $POST_MAX_SIZE = ini_get('post_max_size');
 $unit = strtoupper(substr($POST_MAX_SIZE,-1));
 $multiplier = $unit == 'M' ? 1048576 : ($unit == 'K' ? 1024 : ($unit == 'G' ? 1073741824 : 1));
@@ -141,22 +141,40 @@ require("class.DOCX-HTML.php");
 $extract = new DOCXtoHTML();
 $extract->docxPath = $_FILES['docxhtml_file']['tmp_name'];
 $extract->content_folder = strtolower(str_replace(".".$path_info['extension'],"",str_replace(" ","-",$path_info['basename'])));
+$extract->image_max_width = get_option('docxhtml_max_image_width');
 $extract->imagePathPrefix = plugins_url();
+$extract->keepOriginalImage = ($_POST['docxhtml_original_images']=="true") ? true:false;
 $extract->Init();
 
 //handle the output of the class and define variables needed for the WP post
 $post_data = $extract->output;
 $post_title = $_POST['docxhtml_post_title'];
+$post_name = $_POST['docxhtml_post_name'] ? $_POST['docxhtml_post_name']:"";
+$post_date = $_POST['docxhtml_post_date'];
+if($post_date == "YYYY-mm-dd HH:ii:ss"){
+    $post_date = "";
+}
+$post_id = $_POST['docxhtml_post_id'];
+$post_tags = $_POST['docxhtml_post_tags'];
+$post_comments = $_POST['docxhtml_post_comments'] == "true" ? "open":"closed";
+$post_pings = $_POST['docxhtml_post_pings'] == "true" ? "open":"closed";
 $post_status = $_POST['docxhtml_post_status'];
 $post_type = $_POST['docxhtml_post_type'];
 $post_cat1 = $_POST['docxhtml_post_cat1'];
+$post_cat2 = $_POST['docxhtml_post_cat2'] == "-1" ? NULL:$_POST['docxhtml_post_cat2'];
 // Create post object
 $my_post = array(
+    'ID' => $post_id,
     'post_title' => $post_title,
+    'post_name' => $post_name,
+    'post_date' => $post_date,
+    'tags_input' => $post_tags,
+    'comment_status' => $post_comments,
+    'ping_status' => $post_pings,
     'post_content' => $post_data,
     'post_status' => $post_status,
     'post_type' => $post_type,
-    'post_category' => array($post_cat1)
+    'post_category' => array($post_cat1,$post_cat2)
 );
 
 // Insert the post into the database

@@ -4,25 +4,28 @@ Donate link: http://www.starsites.co.za/
 Tags: doc, parse, html, generate, image, upload, extract, word, 2007, post, page
 Requires at least: 2.8
 Tested up to: 3.1
-Stable tag: 1.2.2
+Stable tag: 1.3
 
 This plugin will process an uploaded .docx file, extracting all the content as a post/page.
 
 == Description ==
-[premium link]: http://wpplugins.com/plugin/305/docx-to-html-premium
-            "DOCX to HTML Premium"
+
+[postoffice link]: http://wordpress.org/extend/plugins/post-office/
+            "Post Office"
 [support link]: http://support.starsites.co.za
             "Starsites Support"
-[support link]: http://www.starsites.co.za
+[website link]: http://www.starsites.co.za
             "Starsites Home"
 
+[Post Office][postoffice link] Will continue with this plugin's functionality (Free Open Source for the full version).
+Post Office can handle Excel files and Word files, with a lot more options than Post Office. [Upgrade Now][postoffice link].
+			
 Do you have a lot of Microsoft Word Documents that you want to post or create a page from? This plugin will do that for you.
 
 In the Administration you will have a new menu item where you will be able to set a few per use settings like the
 post title etc. as well as a field to upload a .docx file (Microsoft Word 2007 file). The Uploaded files as well
 as all temporary files will be removed when the script completes.
 
-This is the Free version of the [DOCX to HTML Premium][premium link] plugin.
 
 Please note:
 *     The normal .doc will not work. Please do not upload any other type of file, the script will not be
@@ -40,8 +43,7 @@ allready defined. Please disable the Free version if you have the Premium versio
 introduced in version 2.8 and should be able to work on WordPress 2.8 and further. The plugin, however might work on earlier versions, 
 but we can't provide support for those versions.
 
-*     If you reqiure support, please open a ticket on our support website @ [support.starsites.co.za][support link] (A Premium customer's query will have a higher 
-priority than a Free user). Announcements and more details available at [Starsites][website link].
+*     Support for DOCX to HTML have been dropped. Use Post Office, and if you then require support, we will gladly help you.
 
 This plug-in will have a Global Settings page where settings can be modified for default behaviour etc.
 
@@ -55,6 +57,9 @@ This section describes how to install the plugin and get it working.
 1. Start uploading your Documents
 
 == Changelog ==
+
+= 1.3 =
+* Final Release: Post Office will continue this functionality.
 
 = 1.2.2 =
 * Fixed the script to create the post correctly.
@@ -74,6 +79,9 @@ This section describes how to install the plugin and get it working.
 * The Fisrt Public version
 
 == Upgrade Notice ==
+
+= 1.3 =
+Final Release: Post Office will continue this functionality
 
 = 1.2.2 =
 Bug Fixed: Post not created due to file not existing.
